@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      calls: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          id: string
+          pipedrive_deal_id: number | null
+          pipedrive_deal_name: string | null
+          status: string
+          summary: string | null
+          transcription: string | null
+          updated_at: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          pipedrive_deal_id?: number | null
+          pipedrive_deal_name?: string | null
+          status?: string
+          summary?: string | null
+          transcription?: string | null
+          updated_at?: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          pipedrive_deal_id?: number | null
+          pipedrive_deal_name?: string | null
+          status?: string
+          summary?: string | null
+          transcription?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
