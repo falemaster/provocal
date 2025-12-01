@@ -28,53 +28,50 @@ serve(async (req) => {
     const systemPrompt = `Tu es un assistant expert en transcription et analyse d'appels commerciaux pour un cabinet de conseil.
 
 ## Ta mission
-1. **Transcrire** l'audio en identifiant clairement les deux interlocuteurs :
+1. **Écouter attentivement** l'audio fourni
+2. **Transcrire** fidèlement ce qui est dit en identifiant les interlocuteurs :
    - **Conseiller** : Le représentant du cabinet de conseil
    - **Client** : L'interlocuteur externe
-
-2. **Analyser** le contenu pour extraire toutes les informations pertinentes
-
-3. **Générer** un compte-rendu structuré professionnel
+3. **Générer** un compte-rendu structuré basé UNIQUEMENT sur le contenu réel de l'appel
 
 ## Format de transcription attendu
-Utilise ce format pour la transcription :
-**Conseiller** : [propos du conseiller]
-**Client** : [propos du client]
+**Conseiller** : [propos exacts du conseiller]
+**Client** : [propos exacts du client]
 ...
 
 ## Format du compte-rendu attendu (markdown)
-Adapte les sections selon les informations disponibles dans l'appel :
+Adapte les sections selon les informations RÉELLEMENT présentes dans l'appel :
 
 ## Coordonnées
-- Nom de la société : [nom ou "Non mentionné"]
+- Nom de la société : [nom mentionné ou "Non mentionné"]
 - Localisation : [ville/région ou "Non mentionnée"]
 - Contacts clés : [noms, rôles, emails si mentionnés]
 
 ## Contexte Historique
-[Description de l'entreprise, son activité, historique pertinent évoqué]
+[Uniquement ce qui a été évoqué dans l'appel]
 
 ## Difficultés
-- [Problème 1 avec montant si applicable]
-- [Problème 2...]
+- [Problèmes mentionnés avec montants si applicable]
 
 ## Particularités
-- [Points spécifiques à noter sur le dossier]
+- [Points spécifiques évoqués]
 
 ## Solution
-- [Solutions envisagées ou proposées durant l'appel]
+- [Solutions discutées durant l'appel]
 
 ## Échéances
-- [Délais importants mentionnés]
+- [Délais mentionnés]
 
 ## Prochaines étapes
-- [Actions à mener suite à l'appel]
+- [Actions convenues]
 
-## Instructions importantes
-- Sois précis et factuel, ne fabrique pas d'informations non présentes dans l'audio
-- Utilise des listes à puces pour la clarté
-- Indique "Non mentionné" si une information n'est pas évoquée
-- Capture les montants, dates et noms propres avec exactitude`;
+## RÈGLES CRITIQUES
+- NE FABRIQUE JAMAIS d'informations non présentes dans l'audio
+- Si l'audio est inaudible ou vide, indique-le clairement
+- Transcris EXACTEMENT ce qui est dit, pas ce que tu imagines
+- Indique "Non mentionné" pour les sections sans information`;
 
+    // Using the correct format for Gemini multimodal with audio
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -90,13 +87,12 @@ Adapte les sections selon les informations disponibles dans l'appel :
             content: [
               { 
                 type: 'text', 
-                text: 'Transcris cet appel commercial en identifiant les deux interlocuteurs (Conseiller et Client), puis génère un compte-rendu structuré. Réponds avec deux sections clairement séparées : "## TRANSCRIPTION" suivi de la transcription complète, puis "## COMPTE-RENDU" suivi du résumé structuré.' 
+                text: 'Écoute attentivement cet enregistrement audio et transcris-le fidèlement. Identifie les deux interlocuteurs (Conseiller et Client), puis génère un compte-rendu structuré basé UNIQUEMENT sur ce que tu entends. Réponds avec "## TRANSCRIPTION" suivi de la transcription exacte, puis "## COMPTE-RENDU" suivi du résumé. Si l\'audio est vide ou inaudible, indique-le.' 
               },
               { 
-                type: 'input_audio', 
-                input_audio: {
-                  data: audioBase64,
-                  format: 'webm'
+                type: 'image_url',
+                image_url: {
+                  url: `data:audio/webm;base64,${audioBase64}`
                 }
               }
             ]
@@ -115,13 +111,14 @@ Adapte les sections selon les informations disponibles dans l'appel :
       if (response.status === 402) {
         throw new Error('AI credits exhausted. Please add credits to continue.');
       }
-      throw new Error(`AI API error: ${response.status}`);
+      throw new Error(`AI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     const fullResponse = data.choices?.[0]?.message?.content || '';
 
     console.log('AI response received, length:', fullResponse.length);
+    console.log('AI response preview:', fullResponse.substring(0, 500));
 
     // Parse the response to separate transcription and summary
     let transcription = '';
@@ -141,7 +138,7 @@ Adapte les sections selon les informations disponibles dans l'appel :
     if (!transcription && !summary) {
       console.log('Parsing failed, using full response as summary');
       summary = fullResponse;
-      transcription = '[Transcription intégrée au compte-rendu]';
+      transcription = '[Voir le compte-rendu ci-dessous]';
     }
 
     console.log('Transcription length:', transcription.length);
