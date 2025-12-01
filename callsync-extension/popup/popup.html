@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CallSync</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>📞 CallSync</h1>
+    </div>
+
+    <!-- Deal Info -->
+    <div class="deal-info" id="dealInfo">
+      <div class="deal-label">Deal Pipedrive</div>
+      <div class="deal-name" id="dealName">Aucun deal détecté</div>
+      <div class="deal-hint" id="dealHint">Ouvrez un deal dans Pipedrive</div>
+    </div>
+
+    <!-- Recording Section -->
+    <div class="recording-section" id="recordingSection">
+      <!-- Status -->
+      <div class="status" id="status">
+        <span class="status-dot"></span>
+        <span class="status-text">Prêt à enregistrer</span>
+      </div>
+
+      <!-- Timer -->
+      <div class="timer" id="timer">00:00</div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <button class="btn btn-record" id="recordBtn" disabled>
+          <span class="btn-icon">🎙️</span>
+          <span class="btn-text">Démarrer</span>
+        </button>
+        <button class="btn btn-pause" id="pauseBtn" style="display: none;">
+          <span class="btn-icon">⏸️</span>
+          <span class="btn-text">Pause</span>
+        </button>
+        <button class="btn btn-stop" id="stopBtn" style="display: none;">
+          <span class="btn-icon">⏹️</span>
+          <span class="btn-text">Arrêter</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="summary-section" id="summarySection" style="display: none;">
+      <div class="summary-label">Résumé généré</div>
+      <textarea 
+        class="summary-textarea" 
+        id="summaryText" 
+        rows="12"
+        placeholder="Le résumé apparaîtra ici..."
+      ></textarea>
+      
+      <button class="btn btn-upload" id="uploadBtn">
+        <span class="btn-icon">📤</span>
+        <span class="btn-text">Envoyer à Pipedrive</span>
+      </button>
+
+      <button class="btn btn-new" id="newRecordingBtn">
+        <span class="btn-icon">🔄</span>
+        <span class="btn-text">Nouvel enregistrement</span>
+      </button>
+    </div>
+
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+      <div class="loading-spinner"></div>
+      <div class="loading-text" id="loadingText">Transcription en cours...</div>
+    </div>
+  </div>
+
+  <script src="../config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
