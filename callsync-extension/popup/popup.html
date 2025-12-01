@@ -17,7 +17,26 @@
     <div class="deal-info" id="dealInfo">
       <div class="deal-label">Deal Pipedrive</div>
       <div class="deal-name" id="dealName">Aucun deal détecté</div>
-      <div class="deal-hint" id="dealHint">Ouvrez un deal dans Pipedrive</div>
+      <div class="deal-hint" id="dealHint">Recherchez ou ouvrez une page deal Pipedrive</div>
+    </div>
+
+    <!-- Deal Search -->
+    <div class="deal-search">
+      <div class="search-label">Rechercher un deal</div>
+      <div class="search-input-wrapper">
+        <input 
+          type="text" 
+          id="dealSearchInput" 
+          class="search-input" 
+          placeholder="Nom du deal..."
+        />
+        <button id="clearSearchBtn" class="clear-btn" style="display: none;">✕</button>
+      </div>
+      <div id="searchResults" class="search-results" style="display: none;"></div>
+      <div id="searchLoading" class="search-loading" style="display: none;">
+        <div class="search-spinner"></div>
+        <span>Recherche...</span>
+      </div>
     </div>
 
     <!-- Recording Section -->

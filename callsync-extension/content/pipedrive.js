@@ -10,27 +10,45 @@ function extractDealId() {
 
 // Fonction pour extraire le nom du deal depuis le DOM
 function extractDealName() {
-  // Sélecteurs possibles pour le titre du deal dans Pipedrive
+  // Sélecteurs possibles pour le titre du deal dans Pipedrive (mis à jour 2024)
   const selectors = [
     '[data-test="deal-title"]',
+    '[data-testid="deal-title"]',
+    '[data-testid="deal-name"]',
+    '[aria-label*="deal"]',
     '.dealTitle',
+    '.deal-title',
     'h1[class*="title"]',
     'h1[class*="deal"]',
+    'h1[class*="heading"]',
     '.cui4-text--heading-xl',
-    '[data-testid="deal-title"]'
+    '.cui4-text--heading-lg',
+    '[class*="DetailViewHeader"] h1',
+    '[class*="detailView"] h1',
+    'header h1',
+    '[role="heading"][aria-level="1"]'
   ];
 
   for (const selector of selectors) {
     const element = document.querySelector(selector);
     if (element && element.textContent.trim()) {
-      return element.textContent.trim();
+      const text = element.textContent.trim();
+      // Éviter les titres trop longs ou vides
+      if (text.length > 3 && text.length < 200) {
+        return text;
+      }
     }
   }
 
-  // Fallback: chercher le premier h1
-  const h1 = document.querySelector('h1');
-  if (h1 && h1.textContent.trim()) {
-    return h1.textContent.trim();
+  // Fallback: chercher le premier h1 visible
+  const h1Elements = document.querySelectorAll('h1');
+  for (const h1 of h1Elements) {
+    if (h1.offsetParent !== null && h1.textContent.trim()) {
+      const text = h1.textContent.trim();
+      if (text.length > 3 && text.length < 200) {
+        return text;
+      }
+    }
   }
 
   return null;

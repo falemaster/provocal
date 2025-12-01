@@ -8,7 +8,8 @@ let state = {
   audioChunks: [],
   audioBlob: null,
   timerInterval: null,
-  summary: null
+  summary: null,
+  searchTimeout: null
 };
 
 // Éléments DOM
@@ -16,6 +17,10 @@ const elements = {
   dealInfo: document.getElementById('dealInfo'),
   dealName: document.getElementById('dealName'),
   dealHint: document.getElementById('dealHint'),
+  dealSearchInput: document.getElementById('dealSearchInput'),
+  clearSearchBtn: document.getElementById('clearSearchBtn'),
+  searchResults: document.getElementById('searchResults'),
+  searchLoading: document.getElementById('searchLoading'),
   status: document.getElementById('status'),
   timer: document.getElementById('timer'),
   recordBtn: document.getElementById('recordBtn'),
@@ -50,6 +55,15 @@ async function init() {
   elements.stopBtn.addEventListener('click', stopRecording);
   elements.uploadBtn.addEventListener('click', uploadToPipedrive);
   elements.newRecordingBtn.addEventListener('click', resetForNewRecording);
+  elements.dealSearchInput.addEventListener('input', handleSearchInput);
+  elements.clearSearchBtn.addEventListener('click', clearSearch);
+  
+  // Cacher les résultats si on clique en dehors
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.deal-search')) {
+      elements.searchResults.style.display = 'none';
+    }
+  });
 }
 
 // Définir le deal actuel
@@ -60,6 +74,102 @@ function setCurrentDeal(deal) {
   elements.dealHint.style.display = 'none';
   elements.dealInfo.classList.add('active');
   elements.recordBtn.disabled = false;
+}
+
+// Rechercher des deals
+async function searchDeals(query) {
+  if (!query || query.length < 2) {
+    elements.searchResults.style.display = 'none';
+    return;
+  }
+
+  elements.searchLoading.style.display = 'flex';
+  elements.searchResults.style.display = 'none';
+
+  try {
+    const response = await fetch(
+      `${CONFIG.SUPABASE_URL}/functions/v1/pipedrive-search`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': CONFIG.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ query })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Erreur de recherche');
+    }
+
+    const data = await response.json();
+    displaySearchResults(data.deals || []);
+
+  } catch (error) {
+    console.error('Erreur recherche:', error);
+    elements.searchResults.innerHTML = '<div class="search-error">Erreur de recherche</div>';
+    elements.searchResults.style.display = 'block';
+  } finally {
+    elements.searchLoading.style.display = 'none';
+  }
+}
+
+// Afficher les résultats de recherche
+function displaySearchResults(deals) {
+  if (deals.length === 0) {
+    elements.searchResults.innerHTML = '<div class="search-empty">Aucun deal trouvé</div>';
+    elements.searchResults.style.display = 'block';
+    return;
+  }
+
+  elements.searchResults.innerHTML = deals
+    .map(deal => `
+      <div class="search-result-item" data-deal-id="${deal.id}" data-deal-name="${deal.title}">
+        <div class="result-title">${deal.title}</div>
+        ${deal.person_name ? `<div class="result-person">${deal.person_name}</div>` : ''}
+        ${deal.org_name ? `<div class="result-org">${deal.org_name}</div>` : ''}
+      </div>
+    `)
+    .join('');
+
+  elements.searchResults.style.display = 'block';
+
+  // Gérer les clics sur les résultats
+  elements.searchResults.querySelectorAll('.search-result-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const dealId = parseInt(item.dataset.dealId);
+      const dealName = item.dataset.dealName;
+      setCurrentDeal({ id: dealId, name: dealName });
+      clearSearch();
+    });
+  });
+}
+
+// Gérer l'input de recherche avec debounce
+function handleSearchInput(e) {
+  const query = e.target.value.trim();
+  
+  // Afficher/masquer le bouton clear
+  elements.clearSearchBtn.style.display = query ? 'flex' : 'none';
+
+  // Debounce de 300ms
+  if (state.searchTimeout) {
+    clearTimeout(state.searchTimeout);
+  }
+
+  state.searchTimeout = setTimeout(() => {
+    searchDeals(query);
+  }, 300);
+}
+
+// Effacer la recherche
+function clearSearch() {
+  elements.dealSearchInput.value = '';
+  elements.clearSearchBtn.style.display = 'none';
+  elements.searchResults.style.display = 'none';
+  elements.searchLoading.style.display = 'none';
 }
 
 // Formater la durée en MM:SS

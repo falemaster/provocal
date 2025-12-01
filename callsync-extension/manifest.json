@@ -7,6 +7,15 @@
     "storage",
     "tabs"
   ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+Y",
+        "mac": "Alt+Shift+Y"
+      },
+      "description": "Ouvrir CallSync"
+    }
+  },
   "host_permissions": [
     "https://*.pipedrive.com/*",
     "https://apxsxhaftjqqidysiktn.supabase.co/*"
