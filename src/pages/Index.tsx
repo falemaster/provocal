@@ -48,10 +48,12 @@ const Index = () => {
   };
 
   const handleStartNewCall = () => {
+    console.log('Starting new call...');
     setIsCreatingCall(true);
     setSelectedCall(null);
     setSelectedDeal(null);
     recorder.resetRecording();
+    console.log('New call started, isCreatingCall:', true);
   };
 
   const handleStopRecording = async () => {
@@ -114,10 +116,18 @@ const Index = () => {
       );
 
       if (!response.ok) {
-        throw new Error('Transcription failed');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || 'Échec de la transcription';
+        throw new Error(errorMessage);
       }
 
-      const { transcription, summary } = await response.json();
+      const result = await response.json();
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      const { transcription, summary } = result;
 
       // Update call with transcription
       const { data: updatedCall, error: updateError } = await supabase
@@ -145,9 +155,10 @@ const Index = () => {
 
     } catch (error) {
       console.error('Processing error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Échec de la transcription';
       toast({
-        title: 'Erreur',
-        description: 'Échec de la transcription',
+        title: 'Erreur de transcription',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
