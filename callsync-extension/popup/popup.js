@@ -74,7 +74,6 @@ function setCurrentDeal(deal) {
   elements.dealName.title = deal.name; // Ajouter tooltip pour les longs noms
   elements.dealHint.style.display = 'none';
   elements.dealInfo.classList.add('active');
-  elements.recordBtn.disabled = false;
   
   // Cacher le champ de recherche si un deal est détecté
   elements.dealSearchInput.value = '';
@@ -187,23 +186,32 @@ function formatDuration(seconds) {
 
 // Démarrer l'enregistrement
 async function startRecording() {
+  console.log('CallSync: Tentative de démarrage de l\'enregistrement');
+  console.log('CallSync: Deal actuel:', state.currentDeal);
+  
   try {
+    console.log('CallSync: Demande d\'accès au microphone...');
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    console.log('CallSync: Accès au microphone accordé');
     
     state.mediaRecorder = new MediaRecorder(stream, {
       mimeType: 'audio/webm'
     });
+    console.log('CallSync: MediaRecorder créé');
 
     state.audioChunks = [];
 
     state.mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
         state.audioChunks.push(event.data);
+        console.log('CallSync: Chunk audio reçu, taille:', event.data.size);
       }
     };
 
     state.mediaRecorder.onstop = async () => {
+      console.log('CallSync: Enregistrement arrêté, traitement...');
       state.audioBlob = new Blob(state.audioChunks, { type: 'audio/webm' });
+      console.log('CallSync: Audio Blob créé, taille:', state.audioBlob.size);
       stream.getTracks().forEach(track => track.stop());
       await transcribeAudio();
     };
@@ -212,13 +220,28 @@ async function startRecording() {
     state.isRecording = true;
     state.isPaused = false;
     state.duration = 0;
+    
+    console.log('CallSync: Enregistrement démarré avec succès');
 
     updateUI();
     startTimer();
 
   } catch (error) {
-    console.error('Erreur lors du démarrage:', error);
-    alert('Erreur: Impossible d\'accéder au microphone. Vérifiez les permissions.');
+    console.error('CallSync: ERREUR lors du démarrage:', error);
+    console.error('CallSync: Type d\'erreur:', error.name);
+    console.error('CallSync: Message:', error.message);
+    
+    let errorMessage = 'Erreur: Impossible d\'accéder au microphone.';
+    
+    if (error.name === 'NotAllowedError') {
+      errorMessage = 'Permission refusée: Autorisez l\'accès au microphone dans les paramètres de Chrome.';
+    } else if (error.name === 'NotFoundError') {
+      errorMessage = 'Aucun microphone détecté sur cet appareil.';
+    } else if (error.name === 'NotReadableError') {
+      errorMessage = 'Microphone déjà utilisé par une autre application.';
+    }
+    
+    alert(errorMessage);
   }
 }
 
@@ -364,7 +387,7 @@ async function transcribeAudio() {
 // Uploader vers Pipedrive
 async function uploadToPipedrive() {
   if (!state.currentDeal) {
-    alert('Aucun deal sélectionné');
+    alert('Veuillez sélectionner un deal avant d\'envoyer à Pipedrive');
     return;
   }
 

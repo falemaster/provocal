@@ -5,7 +5,8 @@
   "description": "Enregistrez vos appels et synchronisez avec Pipedrive",
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "activeTab"
   ],
   "commands": {
     "_execute_action": {
