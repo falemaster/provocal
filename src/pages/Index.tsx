@@ -48,12 +48,26 @@ const Index = () => {
   };
 
   const handleStartNewCall = () => {
-    console.log('Starting new call...');
-    setIsCreatingCall(true);
-    setSelectedCall(null);
-    setSelectedDeal(null);
-    recorder.resetRecording();
-    console.log('New call started, isCreatingCall:', true);
+    try {
+      console.log('Starting new call...');
+      setIsCreatingCall(true);
+      setSelectedCall(null);
+      setSelectedDeal(null);
+      recorder.resetRecording();
+      console.log('New call started, isCreatingCall should now be true');
+
+      toast({
+        title: 'Nouvel appel',
+        description: 'Interface d\'enregistrement ouverte',
+      });
+    } catch (error) {
+      console.error('Error in handleStartNewCall:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de démarrer un nouvel appel',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleStopRecording = async () => {
