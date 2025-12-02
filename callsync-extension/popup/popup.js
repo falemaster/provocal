@@ -68,12 +68,18 @@ async function init() {
 
 // Définir le deal actuel
 function setCurrentDeal(deal) {
-  console.log('Deal reçu:', deal);
+  console.log('CallSync Popup: Deal défini', deal);
   state.currentDeal = deal;
   elements.dealName.textContent = deal.name;
+  elements.dealName.title = deal.name; // Ajouter tooltip pour les longs noms
   elements.dealHint.style.display = 'none';
   elements.dealInfo.classList.add('active');
   elements.recordBtn.disabled = false;
+  
+  // Cacher le champ de recherche si un deal est détecté
+  elements.dealSearchInput.value = '';
+  elements.clearSearchBtn.style.display = 'none';
+  elements.searchResults.style.display = 'none';
 }
 
 // Rechercher des deals

@@ -4,8 +4,10 @@ let currentDeal = null;
 
 // Écouter les messages du content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('Service Worker: Message reçu', message);
+  
   if (message.type === 'DEAL_DETECTED') {
-    console.log('Service Worker: Deal reçu', message.deal);
+    console.log('Service Worker: Deal détecté et stocké', message.deal);
     currentDeal = message.deal;
     
     // Mettre à jour le badge de l'extension
@@ -14,6 +16,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     
     sendResponse({ success: true });
   } else if (message.type === 'GET_CURRENT_DEAL') {
+    console.log('Service Worker: Envoi du deal actuel', currentDeal);
     sendResponse({ deal: currentDeal });
   }
   
