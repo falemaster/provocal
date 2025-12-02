@@ -71,47 +71,90 @@ Adapte les sections selon les informations RÉELLEMENT présentes dans l'appel :
 - Transcris EXACTEMENT ce qui est dit, pas ce que tu imagines
 - Indique "Non mentionné" pour les sections sans information`;
 
-    // Using the correct format for Gemini multimodal with audio
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { 
-            role: 'user', 
-            content: [
-              { 
-                type: 'text', 
-                text: 'Écoute attentivement cet enregistrement audio et transcris-le fidèlement. Identifie les deux interlocuteurs (Conseiller et Client), puis génère un compte-rendu structuré basé UNIQUEMENT sur ce que tu entends. Réponds avec "## TRANSCRIPTION" suivi de la transcription exacte, puis "## COMPTE-RENDU" suivi du résumé. Si l\'audio est vide ou inaudible, indique-le.' 
-              },
-              { 
-                type: 'image_url',
-                image_url: {
-                  url: `data:audio/webm;base64,${audioBase64}`
-                }
-              }
-            ]
-          }
-        ],
-      }),
-    });
+    // Retry logic with exponential backoff for long audio files
+    const maxRetries = 3;
+    const retryDelays = [2000, 5000, 10000]; // 2s, 5s, 10s
+    let lastError: Error | null = null;
+    let response: Response | null = null;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI API error:', response.status, errorText);
-      
-      if (response.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again later.');
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        console.log(`Attempt ${attempt + 1}/${maxRetries} to transcribe audio`);
+        
+        // Using the correct format for Gemini multimodal with audio
+        response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { 
+                role: 'user', 
+                content: [
+                  { 
+                    type: 'text', 
+                    text: 'Écoute attentivement cet enregistrement audio et transcris-le fidèlement. Identifie les deux interlocuteurs (Conseiller et Client), puis génère un compte-rendu structuré basé UNIQUEMENT sur ce que tu entends. Réponds avec "## TRANSCRIPTION" suivi de la transcription exacte, puis "## COMPTE-RENDU" suivi du résumé. Si l\'audio est vide ou inaudible, indique-le.' 
+                  },
+                  { 
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:audio/webm;base64,${audioBase64}`
+                    }
+                  }
+                ]
+              }
+            ],
+          }),
+        });
+
+        if (response.ok) {
+          console.log('Transcription successful on attempt', attempt + 1);
+          break; // Success, exit retry loop
+        }
+
+        // Handle specific error codes
+        const errorText = await response.text();
+        console.error(`AI API error on attempt ${attempt + 1}:`, response.status, errorText);
+        
+        if (response.status === 429) {
+          lastError = new Error('Limite de taux atteinte. Veuillez réessayer dans quelques instants.');
+        } else if (response.status === 402) {
+          lastError = new Error('Crédits IA épuisés. Veuillez contacter le support.');
+        } else if (response.status === 503) {
+          lastError = new Error('Service temporairement indisponible. Nouvel essai en cours...');
+        } else {
+          lastError = new Error(`Erreur API IA: ${response.status} - ${errorText}`);
+        }
+
+        // If this is not the last attempt and it's a retryable error (503, 429), wait and retry
+        if (attempt < maxRetries - 1 && (response.status === 503 || response.status === 429)) {
+          console.log(`Waiting ${retryDelays[attempt]}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]));
+        } else if (response.status === 402) {
+          // Don't retry on payment errors
+          throw lastError;
+        }
+
+      } catch (error) {
+        console.error(`Network error on attempt ${attempt + 1}:`, error);
+        lastError = error instanceof Error ? error : new Error('Erreur réseau inconnue');
+        
+        // If this is not the last attempt, wait and retry
+        if (attempt < maxRetries - 1) {
+          console.log(`Waiting ${retryDelays[attempt]}ms before retry after network error...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]));
+        }
       }
-      if (response.status === 402) {
-        throw new Error('AI credits exhausted. Please add credits to continue.');
-      }
-      throw new Error(`AI API error: ${response.status} - ${errorText}`);
+    }
+
+    // If all retries failed
+    if (!response || !response.ok) {
+      console.error('All retry attempts failed');
+      throw lastError || new Error('Échec de la transcription après plusieurs tentatives');
     }
 
     const data = await response.json();
