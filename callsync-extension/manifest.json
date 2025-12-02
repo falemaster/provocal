@@ -20,6 +20,12 @@
     "https://*.pipedrive.com/*",
     "https://apxsxhaftjqqidysiktn.supabase.co/*"
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["popup/popup.html", "popup/popup.css", "popup/popup.js", "config.js"],
+      "matches": ["https://*.pipedrive.com/*"]
+    }
+  ],
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
@@ -32,6 +38,12 @@
     {
       "matches": ["https://*.pipedrive.com/*"],
       "js": ["content/pipedrive.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.pipedrive.com/*"],
+      "js": ["content/floating-button.js"],
+      "css": ["content/floating-button.css"],
       "run_at": "document_idle"
     }
   ],
