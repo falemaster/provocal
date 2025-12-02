@@ -49,12 +49,13 @@ const Index = () => {
 
   const handleStartNewCall = () => {
     try {
-      console.log('Starting new call...');
       setIsCreatingCall(true);
       setSelectedCall(null);
       setSelectedDeal(null);
       recorder.resetRecording();
-      console.log('New call started, isCreatingCall should now be true');
+
+      // Scroll to top on mobile
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
       toast({
         title: 'Nouvel appel',
