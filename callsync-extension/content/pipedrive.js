@@ -10,47 +10,55 @@ function extractDealId() {
 
 // Fonction pour extraire le nom du deal depuis le DOM
 function extractDealName() {
-  // Sélecteurs possibles pour le titre du deal dans Pipedrive (mis à jour 2024)
+  console.log('CallSync: Recherche du nom du deal dans le DOM...');
+  
+  // Sélecteurs possibles pour le titre du deal dans Pipedrive (2024)
   const selectors = [
-    '[data-test="deal-title"]',
-    '[data-testid="deal-title"]',
-    '[data-testid="deal-name"]',
-    '[aria-label*="deal"]',
-    '.dealTitle',
-    '.deal-title',
-    'h1[class*="title"]',
-    'h1[class*="deal"]',
-    'h1[class*="heading"]',
-    '.cui4-text--heading-xl',
-    '.cui4-text--heading-lg',
-    '[class*="DetailViewHeader"] h1',
+    // Sélecteurs principaux
+    'h1[class*="dealTitle"]',
+    'h1[class*="deal-title"]',
+    'h1[data-test="deal-title"]',
+    'h1[data-testid="deal-title"]',
+    'h1[data-testid="deal-name"]',
+    
+    // Sélecteurs génériques Pipedrive
+    '.detailView h1',
+    '.detailViewHeader h1',
+    '[class*="DetailView"] h1',
     '[class*="detailView"] h1',
+    
+    // Sélecteurs par texte visible
+    'h1.cui4-text--heading-xl',
+    'h1.cui4-text--heading-lg',
+    'h1.cui4-text',
+    
+    // Sélecteurs de fallback
     'header h1',
-    '[role="heading"][aria-level="1"]'
+    '[role="heading"][aria-level="1"]',
+    'h1'
   ];
 
   for (const selector of selectors) {
-    const element = document.querySelector(selector);
-    if (element && element.textContent.trim()) {
-      const text = element.textContent.trim();
-      // Éviter les titres trop longs ou vides
-      if (text.length > 3 && text.length < 200) {
-        return text;
+    const elements = document.querySelectorAll(selector);
+    console.log(`CallSync: Sélecteur "${selector}" trouvé ${elements.length} élément(s)`);
+    
+    for (const element of elements) {
+      if (element && element.textContent.trim()) {
+        const text = element.textContent.trim();
+        // Vérifier que ce n'est pas un titre de navigation
+        const isNavigation = text.toLowerCase().includes('affaires') || 
+                           text.toLowerCase().includes('deals') ||
+                           text.toLowerCase().includes('pipedrive');
+        
+        if (!isNavigation && text.length > 3 && text.length < 200 && element.offsetParent !== null) {
+          console.log(`CallSync: Nom du deal trouvé avec "${selector}": "${text}"`);
+          return text;
+        }
       }
     }
   }
 
-  // Fallback: chercher le premier h1 visible
-  const h1Elements = document.querySelectorAll('h1');
-  for (const h1 of h1Elements) {
-    if (h1.offsetParent !== null && h1.textContent.trim()) {
-      const text = h1.textContent.trim();
-      if (text.length > 3 && text.length < 200) {
-        return text;
-      }
-    }
-  }
-
+  console.log('CallSync: Aucun nom de deal trouvé dans le DOM');
   return null;
 }
 
@@ -73,10 +81,13 @@ function observeDealChanges() {
 function sendDealInfo() {
   const dealId = extractDealId();
   
+  console.log('CallSync: Vérification deal - URL:', window.location.href);
+  console.log('CallSync: Deal ID extrait:', dealId);
+  
   if (dealId) {
     const dealName = extractDealName();
     
-    console.log('CallSync: Deal détecté', { dealId, dealName });
+    console.log('CallSync: Deal détecté', { dealId, dealName, url: window.location.href });
     
     chrome.runtime.sendMessage({
       type: 'DEAL_DETECTED',
@@ -84,9 +95,13 @@ function sendDealInfo() {
         id: dealId,
         name: dealName || `Deal #${dealId}`
       }
+    }).then(response => {
+      console.log('CallSync: Message envoyé avec succès', response);
     }).catch(err => {
-      console.log('CallSync: Erreur envoi message', err);
+      console.error('CallSync: Erreur envoi message', err);
     });
+  } else {
+    console.log('CallSync: Aucun deal détecté dans l\'URL');
   }
 }
 
