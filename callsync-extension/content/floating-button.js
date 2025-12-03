@@ -56,6 +56,7 @@ function createFloatingButton() {
   const iframe = document.createElement('iframe');
   iframe.id = 'callsync-iframe';
   iframe.src = chrome.runtime.getURL('popup/popup.html');
+  iframe.allow = 'microphone'; // Permission pour l'enregistrement audio
 
   iframeContainer.appendChild(closeBtn);
   iframeContainer.appendChild(iframe);
