@@ -72,10 +72,8 @@ const Index = () => {
   };
 
   const handleStopRecording = async () => {
-    recorder.stopRecording();
-    
-    // Wait a bit for the blob to be ready
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const blob = await recorder.stopRecording();
+    console.log('Recording stopped, blob ready:', blob?.size);
   };
 
   const handleProcessCall = async () => {
