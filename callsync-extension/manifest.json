@@ -6,7 +6,8 @@
   "permissions": [
     "storage",
     "tabs",
-    "activeTab"
+    "activeTab",
+    "sidePanel"
   ],
   "commands": {
     "_execute_action": {
@@ -21,6 +22,9 @@
     "https://*.pipedrive.com/*",
     "https://apxsxhaftjqqidysiktn.supabase.co/*"
   ],
+  "side_panel": {
+    "default_path": "popup/popup.html"
+  },
   "web_accessible_resources": [
     {
       "resources": ["popup/popup.html", "popup/popup.css", "popup/popup.js", "config.js"],
@@ -28,7 +32,6 @@
     }
   ],
   "action": {
-    "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

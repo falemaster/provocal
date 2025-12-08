@@ -76,47 +76,19 @@ function handleButtonClick(e) {
   }
 }
 
-// Ouvrir CallSync dans une fenêtre popup flottante et déplaçable
+// Ouvrir CallSync via le Side Panel Chrome
 function openIframe(button) {
-  console.log('CallSync: Ouverture de la fenêtre CallSync');
+  console.log('CallSync: Ouverture du Side Panel');
   
-  const popupUrl = chrome.runtime.getURL('popup/popup.html');
-  const width = 380;
-  const height = 620;
-  
-  // Position en haut à droite
-  const left = window.screen.availWidth - width - 20;
-  const top = 20;
-  
-  // Fermer l'ancien popup s'il existe et est encore ouvert
-  if (window.callsyncPopup && !window.callsyncPopup.closed) {
-    window.callsyncPopup.focus();
-    return;
-  }
-  
-  // Ouvrir une fenêtre standard (pas popup=yes qui cause des restrictions)
-  const popup = window.open(
-    popupUrl,
-    'callsync-recorder',
-    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
-  );
-  
-  if (popup) {
-    window.callsyncPopup = popup;
-    popup.focus();
-    isIframeOpen = true;
-    
-    // Surveiller la fermeture
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed);
-        isIframeOpen = false;
-        window.callsyncPopup = null;
-      }
-    }, 500);
-  } else {
-    alert('CallSync: Veuillez autoriser les popups pour ce site.');
-  }
+  // Envoyer un message au service worker pour ouvrir le side panel
+  chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL' }, (response) => {
+    if (response && response.success) {
+      isIframeOpen = true;
+      console.log('CallSync: Side Panel ouvert avec succès');
+    } else {
+      console.error('CallSync: Erreur ouverture side panel', response?.error);
+    }
+  });
 }
 
 // Fermer le popup (géré automatiquement par la fenêtre)
