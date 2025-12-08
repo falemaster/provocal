@@ -104,17 +104,23 @@ const Index = () => {
 
       if (createError) throw createError;
 
-      // Convert audio to base64
-      const reader = new FileReader();
-      const audioBase64 = await new Promise<string>((resolve) => {
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(',')[1];
-          resolve(base64);
-        };
-        reader.readAsDataURL(recorder.audioBlob!);
-      });
+      // Upload audio to Supabase Storage
+      const audioPath = `${newCall.id}.webm`;
+      const { error: uploadError } = await supabase.storage
+        .from('call-recordings')
+        .upload(audioPath, recorder.audioBlob, {
+          contentType: 'audio/webm',
+          upsert: true,
+        });
 
-      // Call transcription function
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error(`Échec de l'upload audio: ${uploadError.message}`);
+      }
+
+      console.log('Audio uploaded to storage:', audioPath);
+
+      // Call transcription function with storage path
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-call`,
         {
@@ -124,7 +130,7 @@ const Index = () => {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            audioBase64,
+            audioPath,
             callId: newCall.id,
           }),
         }

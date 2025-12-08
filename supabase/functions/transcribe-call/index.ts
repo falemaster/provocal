@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,19 +12,49 @@ serve(async (req) => {
   }
 
   try {
-    const { audioBase64, callId } = await req.json();
+    const { audioPath, callId } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    if (!audioBase64) {
-      throw new Error('No audio data provided');
+    if (!audioPath) {
+      throw new Error('No audio path provided');
     }
 
     console.log('Processing audio transcription for call:', callId);
-    console.log('Audio data length:', audioBase64.length);
+    console.log('Audio path:', audioPath);
+
+    // Create Supabase client with service role to access storage
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+    // Download audio file from storage
+    console.log('Downloading audio from storage...');
+    const { data: audioData, error: downloadError } = await supabase.storage
+      .from('call-recordings')
+      .download(audioPath);
+
+    if (downloadError) {
+      console.error('Storage download error:', downloadError);
+      throw new Error(`Failed to download audio: ${downloadError.message}`);
+    }
+
+    // Convert blob to base64
+    const arrayBuffer = await audioData.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    let binaryString = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.slice(i, i + chunkSize);
+      binaryString += String.fromCharCode.apply(null, [...chunk]);
+    }
+    const audioBase64 = btoa(binaryString);
+
+    console.log('Audio downloaded, size:', uint8Array.length, 'bytes');
+    console.log('Base64 length:', audioBase64.length);
 
     const systemPrompt = `Tu es un assistant expert en transcription et analyse d'appels commerciaux pour un cabinet de conseil.
 
@@ -71,9 +102,9 @@ Adapte les sections selon les informations RÉELLEMENT présentes dans l'appel :
 - Transcris EXACTEMENT ce qui est dit, pas ce que tu imagines
 - Indique "Non mentionné" pour les sections sans information`;
 
-    // Retry logic with exponential backoff for long audio files
+    // Retry logic with exponential backoff
     const maxRetries = 3;
-    const retryDelays = [2000, 5000, 10000]; // 2s, 5s, 10s
+    const retryDelays = [2000, 5000, 10000];
     let lastError: Error | null = null;
     let response: Response | null = null;
 
@@ -81,7 +112,6 @@ Adapte les sections selon les informations RÉELLEMENT présentes dans l'appel :
       try {
         console.log(`Attempt ${attempt + 1}/${maxRetries} to transcribe audio`);
         
-        // Using the correct format for Gemini multimodal with audio
         response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -113,10 +143,9 @@ Adapte les sections selon les informations RÉELLEMENT présentes dans l'appel :
 
         if (response.ok) {
           console.log('Transcription successful on attempt', attempt + 1);
-          break; // Success, exit retry loop
+          break;
         }
 
-        // Handle specific error codes
         const errorText = await response.text();
         console.error(`AI API error on attempt ${attempt + 1}:`, response.status, errorText);
         
@@ -130,12 +159,10 @@ Adapte les sections selon les informations RÉELLEMENT présentes dans l'appel :
           lastError = new Error(`Erreur API IA: ${response.status} - ${errorText}`);
         }
 
-        // If this is not the last attempt and it's a retryable error (503, 429), wait and retry
         if (attempt < maxRetries - 1 && (response.status === 503 || response.status === 429)) {
           console.log(`Waiting ${retryDelays[attempt]}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]));
         } else if (response.status === 402) {
-          // Don't retry on payment errors
           throw lastError;
         }
 
@@ -143,7 +170,6 @@ Adapte les sections selon les informations RÉELLEMENT présentes dans l'appel :
         console.error(`Network error on attempt ${attempt + 1}:`, error);
         lastError = error instanceof Error ? error : new Error('Erreur réseau inconnue');
         
-        // If this is not the last attempt, wait and retry
         if (attempt < maxRetries - 1) {
           console.log(`Waiting ${retryDelays[attempt]}ms before retry after network error...`);
           await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]));
@@ -151,7 +177,6 @@ Adapte les sections selon les informations RÉELLEMENT présentes dans l'appel :
       }
     }
 
-    // If all retries failed
     if (!response || !response.ok) {
       console.error('All retry attempts failed');
       throw lastError || new Error('Échec de la transcription après plusieurs tentatives');
@@ -163,7 +188,7 @@ Adapte les sections selon les informations RÉELLEMENT présentes dans l'appel :
     console.log('AI response received, length:', fullResponse.length);
     console.log('AI response preview:', fullResponse.substring(0, 500));
 
-    // Parse the response to separate transcription and summary
+    // Parse the response
     let transcription = '';
     let summary = '';
 
@@ -177,7 +202,6 @@ Adapte les sections selon les informations RÉELLEMENT présentes dans l'appel :
       summary = summaryMatch[1].trim();
     }
 
-    // Fallback if parsing fails
     if (!transcription && !summary) {
       console.log('Parsing failed, using full response as summary');
       summary = fullResponse;
@@ -186,6 +210,17 @@ Adapte les sections selon les informations RÉELLEMENT présentes dans l'appel :
 
     console.log('Transcription length:', transcription.length);
     console.log('Summary length:', summary.length);
+
+    // Cleanup: delete the audio file from storage after successful transcription
+    const { error: deleteError } = await supabase.storage
+      .from('call-recordings')
+      .remove([audioPath]);
+    
+    if (deleteError) {
+      console.warn('Failed to cleanup audio file:', deleteError);
+    } else {
+      console.log('Audio file cleaned up successfully');
+    }
 
     return new Response(
       JSON.stringify({ 
