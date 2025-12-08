@@ -1,9 +1,13 @@
 // Bouton flottant CallSync pour Pipedrive
 console.log('CallSync: Floating button script chargé');
 
-// Vérifier si on est sur une page deal
+// Vérifier si on est sur une page deal (supporte plusieurs formats d'URL Pipedrive)
 function isDealPage() {
-  return window.location.href.includes('/deal/');
+  const url = window.location.href;
+  return url.includes('/deal/') || 
+         url.includes('/deals/') || 
+         url.match(/\/deal\d+/) ||
+         url.includes('selectedItem=deal');
 }
 
 // État du bouton
@@ -56,7 +60,8 @@ function createFloatingButton() {
   const iframe = document.createElement('iframe');
   iframe.id = 'callsync-iframe';
   iframe.src = chrome.runtime.getURL('popup/popup.html');
-  iframe.allow = 'microphone'; // Permission pour l'enregistrement audio
+  iframe.allow = 'microphone *'; // Permission pour l'enregistrement audio
+  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
 
   iframeContainer.appendChild(closeBtn);
   iframeContainer.appendChild(iframe);
@@ -238,18 +243,29 @@ chrome.runtime.onMessage.addListener((message) => {
 
 // Initialiser
 function init() {
-  if (!isDealPage()) {
-    console.log('CallSync: Pas sur une page deal');
-    return;
-  }
+  console.log('CallSync: Initialisation sur', window.location.href);
   
-  console.log('CallSync: Sur une page deal, création du bouton');
+  // Créer le bouton après un court délai pour laisser Pipedrive charger
+  const tryCreateButton = () => {
+    if (isDealPage()) {
+      const existingButton = document.getElementById('callsync-floating-btn');
+      if (!existingButton) {
+        console.log('CallSync: Création du bouton flottant');
+        createFloatingButton();
+      }
+    }
+  };
   
-  // Attendre que le DOM soit prêt
+  // Essayer immédiatement puis après un délai
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', createFloatingButton);
+    document.addEventListener('DOMContentLoaded', () => {
+      tryCreateButton();
+      setTimeout(tryCreateButton, 1000);
+    });
   } else {
-    createFloatingButton();
+    tryCreateButton();
+    setTimeout(tryCreateButton, 1000);
+    setTimeout(tryCreateButton, 2000);
   }
   
   // Observer les changements d'URL (navigation SPA)
@@ -258,11 +274,14 @@ function init() {
     const currentUrl = window.location.href;
     if (currentUrl !== lastUrl) {
       lastUrl = currentUrl;
+      console.log('CallSync: Changement d\'URL détecté', currentUrl);
       
       const button = document.getElementById('callsync-floating-btn');
-      if (isDealPage() && !button) {
-        createFloatingButton();
-      } else if (!isDealPage() && button) {
+      if (isDealPage()) {
+        if (!button) {
+          createFloatingButton();
+        }
+      } else if (button) {
         button.remove();
         document.getElementById('callsync-iframe-container')?.remove();
         document.getElementById('callsync-overlay')?.remove();
