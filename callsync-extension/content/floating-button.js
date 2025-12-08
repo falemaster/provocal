@@ -87,7 +87,7 @@ function openIframe(button) {
       width: 380,
       height: 620,
       left: window.screen.availWidth - 400,
-      top: 100
+      top: 20 // Coin supérieur droit
     }
   }, (response) => {
     if (response && response.success) {
