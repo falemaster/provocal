@@ -76,27 +76,47 @@ function handleButtonClick(e) {
   }
 }
 
-// Ouvrir CallSync via l'API chrome.windows pour une vraie fenêtre séparée
+// Ouvrir CallSync dans une fenêtre popup flottante et déplaçable
 function openIframe(button) {
   console.log('CallSync: Ouverture de la fenêtre CallSync');
   
-  // Utiliser chrome.runtime pour demander au service worker d'ouvrir la fenêtre
-  chrome.runtime.sendMessage({ 
-    type: 'OPEN_CALLSYNC_WINDOW',
-    position: {
-      width: 380,
-      height: 620,
-      left: window.screen.availWidth - 400,
-      top: 20 // Coin supérieur droit
-    }
-  }, (response) => {
-    if (response && response.success) {
-      isIframeOpen = true;
-    } else {
-      // Fallback: ouvrir dans un nouvel onglet
-      chrome.runtime.sendMessage({ type: 'OPEN_CALLSYNC_TAB' });
-    }
-  });
+  const popupUrl = chrome.runtime.getURL('popup/popup.html');
+  const width = 380;
+  const height = 620;
+  
+  // Position en haut à droite
+  const left = window.screen.availWidth - width - 20;
+  const top = 20;
+  
+  // Fermer l'ancien popup s'il existe et est encore ouvert
+  if (window.callsyncPopup && !window.callsyncPopup.closed) {
+    window.callsyncPopup.focus();
+    return;
+  }
+  
+  // Ouvrir une fenêtre standard (pas popup=yes qui cause des restrictions)
+  const popup = window.open(
+    popupUrl,
+    'callsync-recorder',
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
+  );
+  
+  if (popup) {
+    window.callsyncPopup = popup;
+    popup.focus();
+    isIframeOpen = true;
+    
+    // Surveiller la fermeture
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        isIframeOpen = false;
+        window.callsyncPopup = null;
+      }
+    }, 500);
+  } else {
+    alert('CallSync: Veuillez autoriser les popups pour ce site.');
+  }
 }
 
 // Fermer le popup (géré automatiquement par la fenêtre)
