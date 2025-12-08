@@ -29,8 +29,16 @@ export const useAudioRecorder = () => {
         } 
       });
 
+      // Use opus codec with low bitrate for smaller file sizes (voice optimized)
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+        ? 'audio/webm;codecs=opus' 
+        : MediaRecorder.isTypeSupported('audio/webm') 
+          ? 'audio/webm' 
+          : 'audio/mp4';
+      
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4',
+        mimeType,
+        audioBitsPerSecond: 32000, // 32kbps - sufficient for voice, reduces file size by ~75%
       });
 
       chunksRef.current = [];
