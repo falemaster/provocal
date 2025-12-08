@@ -81,18 +81,29 @@ function openIframe(button) {
   console.log('CallSync: Ouverture du popup CallSync');
   
   const popupUrl = chrome.runtime.getURL('popup/popup.html');
-  const width = 400;
-  const height = 650;
-  const left = window.screenX + window.outerWidth - width - 50;
-  const top = window.screenY + 100;
+  const width = 380;
+  const height = 620;
+  
+  // Positionner le popup à droite de l'écran, aligné avec le bouton flottant
+  const screenWidth = window.screen.availWidth;
+  const screenHeight = window.screen.availHeight;
+  const left = screenWidth - width - 20; // 20px du bord droit
+  const top = Math.max(50, Math.min(window.screenY + 100, screenHeight - height - 50));
+  
+  // Fermer l'ancien popup s'il existe
+  if (window.callsyncPopup && !window.callsyncPopup.closed) {
+    window.callsyncPopup.focus();
+    return;
+  }
   
   const popup = window.open(
     popupUrl,
-    'callsync-popup',
-    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
+    'callsync-recorder',
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no,popup=yes`
   );
   
   if (popup) {
+    window.callsyncPopup = popup;
     popup.focus();
     isIframeOpen = true;
     
@@ -101,11 +112,12 @@ function openIframe(button) {
       if (popup.closed) {
         clearInterval(checkClosed);
         isIframeOpen = false;
+        window.callsyncPopup = null;
       }
     }, 500);
   } else {
-    // Fallback: ouvrir dans un nouvel onglet si popup bloqué
-    window.open(popupUrl, '_blank');
+    // Si le popup est bloqué, informer l'utilisateur
+    alert('CallSync: Veuillez autoriser les popups pour ce site afin d\'utiliser l\'enregistreur.');
   }
 }
 
