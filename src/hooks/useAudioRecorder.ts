@@ -18,6 +18,8 @@ export const useAudioRecorder = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const stopResolverRef = useRef<((blob: Blob) => void) | null>(null);
 
   const startRecording = useCallback(async () => {
     try {
@@ -28,6 +30,8 @@ export const useAudioRecorder = () => {
           autoGainControl: true,
         } 
       });
+
+      streamRef.current = stream;
 
       // Use opus codec with low bitrate for smaller file sizes (voice optimized)
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
@@ -51,10 +55,17 @@ export const useAudioRecorder = () => {
 
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType });
-        setState(prev => ({ ...prev, audioBlob: blob }));
+        console.log('Recording stopped, blob created:', blob.size, 'bytes');
+        setState(prev => ({ ...prev, audioBlob: blob, isRecording: false, isPaused: false }));
         
         // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
+        
+        // Resolve the stop promise if waiting
+        if (stopResolverRef.current) {
+          stopResolverRef.current(blob);
+          stopResolverRef.current = null;
+        }
       };
 
       mediaRecorderRef.current = mediaRecorder;
@@ -82,22 +93,24 @@ export const useAudioRecorder = () => {
     }
   }, []);
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && state.isRecording) {
-      mediaRecorderRef.current.stop();
-      
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+  // Returns a promise that resolves with the blob when recording is fully stopped
+  const stopRecording = useCallback((): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        // Set up resolver before stopping
+        stopResolverRef.current = resolve;
+        
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
 
-      setState(prev => ({
-        ...prev,
-        isRecording: false,
-        isPaused: false,
-      }));
-    }
-  }, [state.isRecording]);
+        mediaRecorderRef.current.stop();
+      } else {
+        resolve(null);
+      }
+    });
+  }, []);
 
   const pauseRecording = useCallback(() => {
     if (mediaRecorderRef.current && state.isRecording && !state.isPaused) {
@@ -136,8 +149,15 @@ export const useAudioRecorder = () => {
       timerRef.current = null;
     }
     
+    // Stop any active stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    
     chunksRef.current = [];
     mediaRecorderRef.current = null;
+    stopResolverRef.current = null;
     
     setState({
       isRecording: false,
