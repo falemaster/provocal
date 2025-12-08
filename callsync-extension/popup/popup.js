@@ -39,6 +39,9 @@ const elements = {
 async function init() {
   console.log('CallSync: Initialisation du popup');
   
+  // Charger la configuration distante
+  await loadRemoteConfig();
+  
   // Récupérer le deal actuel depuis le service worker
   try {
     const response = await chrome.runtime.sendMessage({ type: 'GET_CURRENT_DEAL' });
@@ -92,18 +95,16 @@ async function searchDeals(query) {
   elements.searchResults.style.display = 'none';
 
   try {
-    const response = await fetch(
-      `${CONFIG.SUPABASE_URL}/functions/v1/pipedrive-search`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': CONFIG.SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({ query })
-      }
-    );
+    const searchUrl = getEndpointUrl('pipedriveSearch');
+    const response = await fetch(searchUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': CONFIG.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({ query })
+    });
 
     if (!response.ok) {
       throw new Error('Erreur de recherche');
@@ -114,7 +115,8 @@ async function searchDeals(query) {
 
   } catch (error) {
     console.error('Erreur recherche:', error);
-    elements.searchResults.innerHTML = '<div class="search-error">Erreur de recherche</div>';
+    const errorMsg = getMessage('searchError', 'Erreur de recherche');
+    elements.searchResults.innerHTML = `<div class="search-error">${errorMsg}</div>`;
     elements.searchResults.style.display = 'block';
   } finally {
     elements.searchLoading.style.display = 'none';
@@ -342,21 +344,19 @@ async function transcribeAudio() {
   try {
     const audioBase64 = await blobToBase64(state.audioBlob);
 
-    const response = await fetch(
-      `${CONFIG.SUPABASE_URL}/functions/v1/transcribe-call`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': CONFIG.SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          audioBase64,
-          callId: `ext-${Date.now()}`
-        })
-      }
-    );
+    const transcribeUrl = getEndpointUrl('transcribe');
+    const response = await fetch(transcribeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': CONFIG.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({
+        audioBase64,
+        callId: `ext-${Date.now()}`
+      })
+    });
 
     if (!response.ok) {
       throw new Error(`Erreur ${response.status}: ${response.statusText}`);
@@ -380,14 +380,16 @@ async function transcribeAudio() {
   } catch (error) {
     hideLoading();
     console.error('Erreur de transcription:', error);
-    alert(`Erreur lors de la transcription: ${error.message}`);
+    const errorMsg = getMessage('transcriptionError', 'Erreur lors de la transcription');
+    alert(`${errorMsg}: ${error.message}`);
   }
 }
 
 // Uploader vers Pipedrive
 async function uploadToPipedrive() {
   if (!state.currentDeal) {
-    alert('Veuillez sélectionner un deal avant d\'envoyer à Pipedrive');
+    const msg = getMessage('noDealSelected', 'Veuillez sélectionner un deal avant d\'envoyer');
+    alert(msg);
     return;
   }
 
@@ -401,21 +403,19 @@ async function uploadToPipedrive() {
   elements.uploadBtn.disabled = true;
 
   try {
-    const response = await fetch(
-      `${CONFIG.SUPABASE_URL}/functions/v1/pipedrive-add-note`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': CONFIG.SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          dealId: state.currentDeal.id,
-          content: `📞 Résumé d'appel CallSync\n\n${summary}`
-        })
-      }
-    );
+    const addNoteUrl = getEndpointUrl('pipedriveAddNote');
+    const response = await fetch(addNoteUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': CONFIG.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({
+        dealId: state.currentDeal.id,
+        content: `📞 Résumé d'appel CallSync\n\n${summary}`
+      })
+    });
 
     if (!response.ok) {
       throw new Error(`Erreur ${response.status}`);
@@ -428,7 +428,8 @@ async function uploadToPipedrive() {
     }
 
     hideLoading();
-    alert('✅ Résumé envoyé avec succès à Pipedrive !');
+    const successMsg = getMessage('uploadSuccess', 'Résumé envoyé avec succès à Pipedrive !');
+    alert(`✅ ${successMsg}`);
     
     // Retour à l'écran d'enregistrement
     resetForNewRecording();
@@ -436,7 +437,8 @@ async function uploadToPipedrive() {
   } catch (error) {
     hideLoading();
     console.error('Erreur upload:', error);
-    alert(`Erreur lors de l'envoi: ${error.message}`);
+    const errorMsg = getMessage('uploadError', 'Erreur lors de l\'envoi à Pipedrive');
+    alert(`${errorMsg}: ${error.message}`);
     elements.uploadBtn.disabled = false;
   }
 }
