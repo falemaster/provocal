@@ -76,49 +76,27 @@ function handleButtonClick(e) {
   }
 }
 
-// Ouvrir CallSync dans une fenêtre popup (contourne les restrictions microphone de l'iframe)
+// Ouvrir CallSync via l'API chrome.windows pour une vraie fenêtre séparée
 function openIframe(button) {
-  console.log('CallSync: Ouverture du popup CallSync');
+  console.log('CallSync: Ouverture de la fenêtre CallSync');
   
-  const popupUrl = chrome.runtime.getURL('popup/popup.html');
-  const width = 380;
-  const height = 620;
-  
-  // Positionner le popup à droite de l'écran, aligné avec le bouton flottant
-  const screenWidth = window.screen.availWidth;
-  const screenHeight = window.screen.availHeight;
-  const left = screenWidth - width - 20; // 20px du bord droit
-  const top = Math.max(50, Math.min(window.screenY + 100, screenHeight - height - 50));
-  
-  // Fermer l'ancien popup s'il existe
-  if (window.callsyncPopup && !window.callsyncPopup.closed) {
-    window.callsyncPopup.focus();
-    return;
-  }
-  
-  const popup = window.open(
-    popupUrl,
-    'callsync-recorder',
-    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no,popup=yes`
-  );
-  
-  if (popup) {
-    window.callsyncPopup = popup;
-    popup.focus();
-    isIframeOpen = true;
-    
-    // Surveiller la fermeture
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed);
-        isIframeOpen = false;
-        window.callsyncPopup = null;
-      }
-    }, 500);
-  } else {
-    // Si le popup est bloqué, informer l'utilisateur
-    alert('CallSync: Veuillez autoriser les popups pour ce site afin d\'utiliser l\'enregistreur.');
-  }
+  // Utiliser chrome.runtime pour demander au service worker d'ouvrir la fenêtre
+  chrome.runtime.sendMessage({ 
+    type: 'OPEN_CALLSYNC_WINDOW',
+    position: {
+      width: 380,
+      height: 620,
+      left: window.screen.availWidth - 400,
+      top: 100
+    }
+  }, (response) => {
+    if (response && response.success) {
+      isIframeOpen = true;
+    } else {
+      // Fallback: ouvrir dans un nouvel onglet
+      chrome.runtime.sendMessage({ type: 'OPEN_CALLSYNC_TAB' });
+    }
+  });
 }
 
 // Fermer le popup (géré automatiquement par la fenêtre)
