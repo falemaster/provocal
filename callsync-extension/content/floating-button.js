@@ -48,33 +48,8 @@ function createFloatingButton() {
     button.style.bottom = '30px';
   }
 
-  // Conteneur iframe
-  const iframeContainer = document.createElement('div');
-  iframeContainer.id = 'callsync-iframe-container';
-  
-  const closeBtn = document.createElement('button');
-  closeBtn.id = 'callsync-close-btn';
-  closeBtn.innerHTML = '✕';
-  closeBtn.onclick = closeIframe;
-
-  const iframe = document.createElement('iframe');
-  iframe.id = 'callsync-iframe';
-  iframe.src = chrome.runtime.getURL('popup/popup.html');
-  iframe.allow = 'microphone *'; // Permission pour l'enregistrement audio
-  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
-
-  iframeContainer.appendChild(closeBtn);
-  iframeContainer.appendChild(iframe);
-
-  // Overlay
-  const overlay = document.createElement('div');
-  overlay.id = 'callsync-overlay';
-  overlay.onclick = closeIframe;
-
   // Ajouter au DOM
   document.body.appendChild(button);
-  document.body.appendChild(overlay);
-  document.body.appendChild(iframeContainer);
 
   // Events
   button.addEventListener('click', handleButtonClick);
@@ -101,58 +76,42 @@ function handleButtonClick(e) {
   }
 }
 
-// Ouvrir l'iframe
+// Ouvrir CallSync dans une fenêtre popup (contourne les restrictions microphone de l'iframe)
 function openIframe(button) {
-  console.log('CallSync: Ouverture de l\'iframe');
+  console.log('CallSync: Ouverture du popup CallSync');
   
-  const container = document.getElementById('callsync-iframe-container');
-  const overlay = document.getElementById('callsync-overlay');
+  const popupUrl = chrome.runtime.getURL('popup/popup.html');
+  const width = 400;
+  const height = 650;
+  const left = window.screenX + window.outerWidth - width - 50;
+  const top = window.screenY + 100;
   
-  // Calculer la position
-  const rect = button.getBoundingClientRect();
-  const iframeWidth = 380;
-  const iframeHeight = 600;
+  const popup = window.open(
+    popupUrl,
+    'callsync-popup',
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
+  );
   
-  // Positionner à gauche ou à droite du bouton selon l'espace disponible
-  let left, top;
-  
-  if (rect.left > window.innerWidth / 2) {
-    // Bouton à droite, ouvrir à gauche
-    left = Math.max(10, rect.left - iframeWidth - 20);
+  if (popup) {
+    popup.focus();
+    isIframeOpen = true;
+    
+    // Surveiller la fermeture
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        isIframeOpen = false;
+      }
+    }, 500);
   } else {
-    // Bouton à gauche, ouvrir à droite
-    left = Math.min(window.innerWidth - iframeWidth - 10, rect.right + 20);
+    // Fallback: ouvrir dans un nouvel onglet si popup bloqué
+    window.open(popupUrl, '_blank');
   }
-  
-  // Centrer verticalement par rapport au bouton
-  top = Math.max(10, Math.min(
-    window.innerHeight - iframeHeight - 10,
-    rect.top + (rect.height / 2) - (iframeHeight / 2)
-  ));
-  
-  container.style.left = `${left}px`;
-  container.style.top = `${top}px`;
-  
-  container.classList.add('visible');
-  overlay.classList.add('visible');
-  isIframeOpen = true;
 }
 
-// Fermer l'iframe
+// Fermer le popup (géré automatiquement par la fenêtre)
 function closeIframe() {
-  console.log('CallSync: Fermeture de l\'iframe');
-  
-  const container = document.getElementById('callsync-iframe-container');
-  const overlay = document.getElementById('callsync-overlay');
-  
-  container.classList.remove('visible');
-  overlay.classList.remove('visible');
-  
-  setTimeout(() => {
-    container.style.display = 'none';
-    overlay.style.display = 'none';
-  }, 200);
-  
+  console.log('CallSync: Fermeture demandée');
   isIframeOpen = false;
 }
 
@@ -283,8 +242,6 @@ function init() {
         }
       } else if (button) {
         button.remove();
-        document.getElementById('callsync-iframe-container')?.remove();
-        document.getElementById('callsync-overlay')?.remove();
       }
     }
   }, 500);
