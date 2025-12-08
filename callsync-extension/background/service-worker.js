@@ -50,9 +50,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Créer une nouvelle fenêtre CallSync
 function createCallSyncWindow(pos, sendResponse) {
+  // Utiliser type: 'normal' au lieu de 'popup' pour avoir les permissions microphone complètes
   chrome.windows.create({
     url: chrome.runtime.getURL('popup/popup.html'),
-    type: 'popup',
+    type: 'normal',
     width: pos.width,
     height: pos.height,
     left: pos.left,
