@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.cleanup-old-recordings]
 verify_jwt = false
+
+[functions.extension-config]
+verify_jwt = false
