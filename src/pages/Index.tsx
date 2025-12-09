@@ -302,6 +302,42 @@ const Index = () => {
     }
   };
 
+  const handleDeleteCall = async (callId: string) => {
+    try {
+      // Delete audio from storage if exists
+      await supabase.storage
+        .from('call-recordings')
+        .remove([`${callId}.webm`]);
+
+      // Delete call record
+      const { error } = await supabase
+        .from('calls')
+        .delete()
+        .eq('id', callId);
+
+      if (error) throw error;
+
+      // Clear selection if deleted call was selected
+      if (selectedCall?.id === callId) {
+        setSelectedCall(null);
+      }
+
+      await loadCalls();
+
+      toast({
+        title: 'Supprimé',
+        description: 'L\'enregistrement a été supprimé',
+      });
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de supprimer l\'enregistrement',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -356,6 +392,7 @@ const Index = () => {
                         status: '',
                       } : null);
                     }}
+                    onDelete={handleDeleteCall}
                     isActive={selectedCall?.id === call.id}
                   />
                 ))}
