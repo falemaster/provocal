@@ -1,9 +1,11 @@
 // Service worker pour gérer la communication entre le content script et le popup
 
+const VERSION = '2.3.0';
 let currentDeal = null;
 
-// Note: Side panel désactivé car on utilise le popup standard
-// chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+// Afficher la version sur le badge au démarrage
+chrome.action.setBadgeText({ text: 'v2.3' });
+chrome.action.setBadgeBackgroundColor({ color: '#6366f1' });
 
 // Écouter les messages du content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
