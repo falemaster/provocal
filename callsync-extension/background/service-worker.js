@@ -2,8 +2,8 @@
 
 let currentDeal = null;
 
-// Configurer le side panel pour s'ouvrir uniquement sur Pipedrive
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+// Note: Side panel désactivé car on utilise le popup standard
+// chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 // Écouter les messages du content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
