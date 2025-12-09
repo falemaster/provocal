@@ -12,7 +12,22 @@ serve(async (req) => {
   }
 
   try {
-    const { audioPath, callId } = await req.json();
+    const rawBody = await req.text();
+    console.log('Raw request body received:', rawBody);
+    
+    let audioPath: string | undefined;
+    let callId: string | undefined;
+    
+    try {
+      const parsed = JSON.parse(rawBody);
+      audioPath = parsed.audioPath;
+      callId = parsed.callId;
+      console.log('Parsed body - audioPath:', audioPath, 'callId:', callId);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      throw new Error(`Invalid JSON body: ${rawBody.substring(0, 200)}`);
+    }
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -21,8 +36,9 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    if (!audioPath) {
-      throw new Error('No audio path provided');
+    if (!audioPath || audioPath === 'undefined' || audioPath === 'null') {
+      console.error('audioPath validation failed:', { audioPath, callId, rawBody: rawBody.substring(0, 500) });
+      throw new Error(`No audio path provided. Received: audioPath=${audioPath}, callId=${callId}`);
     }
 
     console.log('Processing audio transcription for call:', callId);
