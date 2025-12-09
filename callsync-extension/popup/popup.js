@@ -324,26 +324,38 @@ function hideLoading() {
   elements.loadingOverlay.style.display = 'none';
 }
 
-// Convertir blob en base64
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result.split(',')[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
 // Transcrire l'audio
 async function transcribeAudio() {
-  showLoading('Transcription et génération du résumé...');
+  showLoading('Envoi de l\'audio...');
 
   try {
-    const audioBase64 = await blobToBase64(state.audioBlob);
+    // Générer un ID unique pour l'appel
+    const callId = `ext-${Date.now()}`;
+    const audioPath = `${callId}.webm`;
+    
+    console.log('CallSync: Upload audio vers Storage, path:', audioPath, 'size:', state.audioBlob.size);
 
+    // 1. Uploader l'audio vers Supabase Storage
+    const uploadUrl = `${CONFIG.SUPABASE_URL}/storage/v1/object/call-recordings/${audioPath}`;
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`,
+        'Content-Type': 'audio/webm',
+      },
+      body: state.audioBlob
+    });
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      console.error('CallSync: Erreur upload Storage:', errorText);
+      throw new Error(`Échec de l'upload audio: ${uploadResponse.status}`);
+    }
+
+    console.log('CallSync: Audio uploadé avec succès');
+    showLoading('Transcription et génération du résumé...');
+
+    // 2. Appeler la fonction de transcription avec le chemin du fichier
     const transcribeUrl = getEndpointUrl('transcribe');
     const response = await fetch(transcribeUrl, {
       method: 'POST',
@@ -353,13 +365,14 @@ async function transcribeAudio() {
         'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
       },
       body: JSON.stringify({
-        audioBase64,
-        callId: `ext-${Date.now()}`
+        audioPath,  // Envoyer le chemin, pas le base64
+        callId
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Erreur ${response.status}: ${response.statusText}`);
     }
 
     const data = await response.json();
