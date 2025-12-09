@@ -54,8 +54,13 @@ const Index = () => {
       setSelectedDeal(null);
       recorder.resetRecording();
 
-      // Scroll to top on mobile
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Scroll to recording section on mobile (after state update)
+      setTimeout(() => {
+        const recordingSection = document.getElementById('recording-section');
+        if (recordingSection) {
+          recordingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
 
       toast({
         title: 'Nouvel appel',
@@ -403,7 +408,7 @@ const Index = () => {
           {/* Main content */}
           <section className="lg:col-span-2">
             {isCreatingCall ? (
-              <div className="rounded-2xl border bg-card p-8 shadow-soft animate-slide-up">
+              <div id="recording-section" className="rounded-2xl border bg-card p-8 shadow-soft animate-slide-up">
                 <h2 className="text-2xl font-bold text-foreground mb-6">Nouvel enregistrement</h2>
                 
                 {/* Deal search */}
