@@ -7,16 +7,16 @@
   border-radius: 50%;
   box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4), 0 0 0 0 rgba(99, 102, 241, 0.4);
   cursor: pointer;
-  z-index: 999999;
+  z-index: 2147483646;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 0.2s ease, box-shadow 0.3s ease;
   user-select: none;
-  animation: pulse-ring 2s ease-out infinite;
+  animation: callsync-pulse-ring 2s ease-out infinite;
 }
 
-@keyframes pulse-ring {
+@keyframes callsync-pulse-ring {
   0% {
     box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4), 0 0 0 0 rgba(99, 102, 241, 0.4);
   }
@@ -44,6 +44,12 @@
   animation: none;
 }
 
+#callsync-floating-btn.active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+  animation: none;
+}
+
 /* Icône SVG */
 #callsync-floating-btn-icon {
   width: 28px;
@@ -51,7 +57,7 @@
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
-/* Badge de notification */
+/* Badge */
 #callsync-floating-badge {
   position: absolute;
   top: -2px;
@@ -74,103 +80,451 @@
   display: flex;
 }
 
-/* Iframe de l'extension (non utilisé mais gardé pour compatibilité) */
-#callsync-iframe-container {
+/* =============== PANNEAU LATÉRAL =============== */
+#callsync-side-panel {
   position: fixed;
-  z-index: 999998;
-  display: none;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-  transition: opacity 0.2s, transform 0.2s;
+  top: 0;
+  right: -420px;
+  width: 400px;
+  height: 100vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  box-shadow: -4px 0 30px rgba(0, 0, 0, 0.3);
+  z-index: 2147483645;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-#callsync-iframe-container.visible {
-  display: block;
-  animation: slideIn 0.3s ease-out;
+#callsync-side-panel.open {
+  right: 0;
 }
 
-#callsync-iframe-container.hidden {
-  animation: slideOut 0.2s ease-in;
+/* Header du panneau */
+#callsync-panel-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(14, 165, 233, 0.2);
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes slideOut {
-  from {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.95);
-  }
-}
-
-#callsync-iframe {
-  width: 380px;
-  height: 600px;
-  border: none;
-  display: block;
-  background: white;
-}
-
-/* Bouton de fermeture */
-#callsync-close-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
-  background: rgba(0, 0, 0, 0.5);
-  border: none;
-  border-radius: 50%;
-  color: white;
-  font-size: 18px;
+#callsync-panel-close {
+  width: 32px;
+  height: 32px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #ef4444;
+  font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999999;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
-#callsync-close-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
+#callsync-panel-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
 }
 
-/* Overlay semi-transparent optionnel */
-#callsync-overlay {
-  position: fixed;
+/* Corps du panneau */
+#callsync-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* =============== STYLES DU CONTENU =============== */
+.callsync-panel-content {
+  padding: 20px;
+  color: #e2e8f0;
+}
+
+.callsync-panel-header {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid rgba(14, 165, 233, 0.2);
+}
+
+.callsync-panel-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+/* Deal Info */
+.callsync-deal-info {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.callsync-deal-label {
+  font-size: 12px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.callsync-deal-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.callsync-deal-hint {
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.callsync-deal-info.active {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+/* Search */
+.callsync-deal-search {
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.callsync-search-label {
+  font-size: 12px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.callsync-search-input-wrapper {
+  position: relative;
+}
+
+.callsync-search-input {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-radius: 10px;
+  padding: 10px 36px 10px 12px;
+  color: #e2e8f0;
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.callsync-search-input:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.callsync-clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(100, 116, 139, 0.2);
+  border: none;
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.callsync-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.callsync-search-results {
+  position: absolute;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-radius: 10px;
+  margin-top: 4px;
+  z-index: 100;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.callsync-search-result-item {
+  padding: 12px;
+  border-bottom: 1px solid rgba(14, 165, 233, 0.1);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.callsync-search-result-item:hover {
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.callsync-search-result-item:last-child {
+  border-bottom: none;
+}
+
+.callsync-result-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+}
+
+.callsync-result-person,
+.callsync-result-org {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.callsync-search-empty,
+.callsync-search-error {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.callsync-search-error {
+  color: #ef4444;
+}
+
+.callsync-search-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.callsync-search-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(14, 165, 233, 0.2);
+  border-top-color: #0ea5e9;
+  border-radius: 50%;
+  animation: callsync-spin 1s linear infinite;
+}
+
+/* Status */
+.callsync-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 8px;
+}
+
+.callsync-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #64748b;
+}
+
+.callsync-status.recording .callsync-status-dot {
+  background: #ef4444;
+  animation: callsync-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes callsync-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.callsync-status-text {
+  font-size: 14px;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+/* Timer */
+.callsync-timer {
+  font-size: 48px;
+  font-weight: 700;
+  text-align: center;
+  margin: 20px 0;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Controls */
+.callsync-controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.callsync-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.callsync-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.callsync-btn-icon {
+  font-size: 18px;
+}
+
+.callsync-btn-record {
+  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+  color: white;
+}
+
+.callsync-btn-record:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4);
+}
+
+.callsync-btn-pause {
+  background: #f59e0b;
+  color: white;
+}
+
+.callsync-btn-pause:hover {
+  background: #d97706;
+  transform: translateY(-2px);
+}
+
+.callsync-btn-stop {
+  background: #ef4444;
+  color: white;
+}
+
+.callsync-btn-stop:hover {
+  background: #dc2626;
+  transform: translateY(-2px);
+}
+
+.callsync-btn-upload {
+  width: 100%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  margin-bottom: 12px;
+}
+
+.callsync-btn-upload:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+}
+
+.callsync-btn-new {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  color: #0ea5e9;
+}
+
+.callsync-btn-new:hover {
+  background: rgba(14, 165, 233, 0.1);
+  border-color: #0ea5e9;
+}
+
+/* Summary */
+.callsync-summary-section {
+  margin-top: 20px;
+}
+
+.callsync-summary-label {
+  font-size: 12px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.callsync-summary-textarea {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-radius: 10px;
+  padding: 12px;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 16px;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
+.callsync-summary-textarea:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  background: rgba(15, 23, 42, 0.8);
+}
+
+/* Loading */
+.callsync-loading-overlay {
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 999997;
-  display: none;
+  background: rgba(15, 23, 42, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  z-index: 1000;
 }
 
-#callsync-overlay.visible {
-  display: block;
-  animation: fadeIn 0.2s ease-out;
+.callsync-loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(14, 165, 233, 0.2);
+  border-top-color: #0ea5e9;
+  border-radius: 50%;
+  animation: callsync-spin 1s linear infinite;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+@keyframes callsync-spin {
+  to { transform: rotate(360deg); }
+}
+
+.callsync-loading-text {
+  font-size: 14px;
+  color: #94a3b8;
 }

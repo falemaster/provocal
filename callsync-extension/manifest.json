@@ -1,13 +1,12 @@
 {
   "manifest_version": 3,
   "name": "CallSync - Pipedrive Call Recorder",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Enregistrez vos appels et synchronisez avec Pipedrive",
   "permissions": [
     "storage",
     "tabs",
-    "activeTab",
-    "sidePanel"
+    "activeTab"
   ],
   "commands": {
     "_execute_action": {
@@ -22,12 +21,9 @@
     "https://*.pipedrive.com/*",
     "https://apxsxhaftjqqidysiktn.supabase.co/*"
   ],
-  "side_panel": {
-    "default_path": "popup/popup.html"
-  },
   "web_accessible_resources": [
     {
-      "resources": ["popup/popup.html", "popup/popup.css", "popup/popup.js", "config.js"],
+      "resources": ["popup/popup.html", "popup/popup.css", "popup/popup.js", "config.js", "content/side-panel.js"],
       "matches": ["https://*.pipedrive.com/*"]
     }
   ],
