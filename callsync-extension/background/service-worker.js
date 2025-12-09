@@ -1,10 +1,10 @@
 // Service worker pour gérer la communication entre le content script et le popup
 
-const VERSION = '2.3.0';
+const VERSION = '2.4.0';
 let currentDeal = null;
 
 // Afficher la version sur le badge au démarrage
-chrome.action.setBadgeText({ text: 'v2.3' });
+chrome.action.setBadgeText({ text: 'v2.4' });
 chrome.action.setBadgeBackgroundColor({ color: '#6366f1' });
 
 // Écouter les messages du content script
@@ -23,43 +23,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'GET_CURRENT_DEAL') {
     console.log('Service Worker: Envoi du deal actuel', currentDeal);
     sendResponse({ deal: currentDeal });
-  } else if (message.type === 'OPEN_SIDE_PANEL') {
-    // Ouvrir le side panel dans l'onglet actuel
-    if (sender.tab && sender.tab.id) {
-      chrome.sidePanel.open({ tabId: sender.tab.id })
-        .then(() => {
-          sendResponse({ success: true });
-        })
-        .catch((error) => {
-          console.error('Erreur ouverture side panel:', error);
-          sendResponse({ success: false, error: error.message });
-        });
-    } else {
-      // Fallback: obtenir l'onglet actif
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) {
-          chrome.sidePanel.open({ tabId: tabs[0].id })
-            .then(() => {
-              sendResponse({ success: true });
-            })
-            .catch((error) => {
-              console.error('Erreur ouverture side panel:', error);
-              sendResponse({ success: false, error: error.message });
-            });
-        }
-      });
-    }
-    return true; // Async response
-  } else if (message.type === 'TOGGLE_SIDE_PANEL') {
-    // Toggle le side panel (ouvrir/fermer)
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) {
-        chrome.sidePanel.open({ tabId: tabs[0].id })
-          .then(() => sendResponse({ success: true }))
-          .catch((error) => sendResponse({ success: false, error: error.message }));
-      }
-    });
-    return true;
   }
   
   return true; // Garde le canal de message ouvert pour sendResponse asynchrone
@@ -68,13 +31,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Réinitialiser le deal quand l'utilisateur change d'onglet
 chrome.tabs.onActivated.addListener(() => {
   currentDeal = null;
-  chrome.action.setBadgeText({ text: '' });
+  chrome.action.setBadgeText({ text: 'v2.4' });
+  chrome.action.setBadgeBackgroundColor({ color: '#6366f1' });
 });
 
 // Réinitialiser le deal quand l'URL change
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url && !changeInfo.url.includes('pipedrive.com/deal/')) {
     currentDeal = null;
-    chrome.action.setBadgeText({ text: '' });
+    chrome.action.setBadgeText({ text: 'v2.4' });
+    chrome.action.setBadgeBackgroundColor({ color: '#6366f1' });
   }
 });
