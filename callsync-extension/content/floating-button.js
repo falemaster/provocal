@@ -11,8 +11,9 @@ function isDealPage() {
 }
 
 // État du bouton
-let isIframeOpen = false;
+let popupWindow = null;
 let isDragging = false;
+let hasMoved = false;
 let currentX = 0;
 let currentY = 0;
 let initialX = 0;
@@ -29,11 +30,14 @@ function createFloatingButton() {
 
   console.log('CallSync: Création du bouton flottant');
 
-  // Bouton principal
+  // Bouton principal avec icône SVG moderne
   const button = document.createElement('div');
   button.id = 'callsync-floating-btn';
   button.innerHTML = `
-    <div id="callsync-floating-btn-icon">📞</div>
+    <svg id="callsync-floating-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="19" cy="5" r="3" fill="#10b981" stroke="white" stroke-width="1.5"/>
+    </svg>
     <div id="callsync-floating-badge">✓</div>
   `;
 
@@ -67,34 +71,55 @@ function createFloatingButton() {
 
 // Gérer le clic sur le bouton
 function handleButtonClick(e) {
-  if (!isDragging) {
-    if (isIframeOpen) {
-      closeIframe();
-    } else {
-      openIframe(e.currentTarget);
-    }
+  // Ne pas ouvrir si on a bougé le bouton
+  if (hasMoved) {
+    hasMoved = false;
+    return;
+  }
+  
+  togglePopup();
+}
+
+// Toggle le popup CallSync
+function togglePopup() {
+  // Vérifier si la fenêtre popup existe et est ouverte
+  if (popupWindow && !popupWindow.closed) {
+    // Fenêtre existe, la fermer
+    popupWindow.close();
+    popupWindow = null;
+    console.log('CallSync: Popup fermé');
+  } else {
+    // Ouvrir une nouvelle fenêtre popup
+    openPopup();
   }
 }
 
-// Ouvrir CallSync via le Side Panel Chrome
-function openIframe(button) {
-  console.log('CallSync: Ouverture du Side Panel');
+// Ouvrir le popup CallSync dans une fenêtre indépendante
+function openPopup() {
+  console.log('CallSync: Ouverture du popup window');
   
-  // Envoyer un message au service worker pour ouvrir le side panel
-  chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL' }, (response) => {
-    if (response && response.success) {
-      isIframeOpen = true;
-      console.log('CallSync: Side Panel ouvert avec succès');
-    } else {
-      console.error('CallSync: Erreur ouverture side panel', response?.error);
-    }
-  });
-}
-
-// Fermer le popup (géré automatiquement par la fenêtre)
-function closeIframe() {
-  console.log('CallSync: Fermeture demandée');
-  isIframeOpen = false;
+  // Calculer la position (en haut à droite)
+  const width = 380;
+  const height = 550;
+  const left = window.screenX + window.outerWidth - width - 20;
+  const top = window.screenY + 80;
+  
+  // Obtenir l'URL du popup
+  const popupUrl = chrome.runtime.getURL('popup/popup.html');
+  
+  // Ouvrir la fenêtre
+  popupWindow = window.open(
+    popupUrl,
+    'CallSync',
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,status=no,menubar=no,toolbar=no,location=no`
+  );
+  
+  if (popupWindow) {
+    popupWindow.focus();
+    console.log('CallSync: Popup ouvert avec succès');
+  } else {
+    console.error('CallSync: Impossible d\'ouvrir le popup (bloqué par le navigateur?)');
+  }
 }
 
 // Drag & Drop
@@ -111,6 +136,7 @@ function dragStart(e) {
   
   if (e.target === button || button.contains(e.target)) {
     isDragging = true;
+    hasMoved = false;
     button.classList.add('dragging');
   }
 }
@@ -119,6 +145,7 @@ function drag(e) {
   if (!isDragging) return;
   
   e.preventDefault();
+  hasMoved = true;
   
   const button = document.getElementById('callsync-floating-btn');
   

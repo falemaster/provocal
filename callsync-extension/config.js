@@ -2,7 +2,7 @@
 // Version locale - sera mise à jour dynamiquement depuis le serveur
 const CONFIG = {
   // Version de l'extension (doit correspondre à manifest.json)
-  VERSION: '2.3.0',
+  VERSION: '2.4.0',
   
   // URLs de base (fallback si le serveur est inaccessible)
   SUPABASE_URL: 'https://apxsxhaftjqqidysiktn.supabase.co',

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CallSync - Pipedrive Call Recorder",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Enregistrez vos appels et synchronisez avec Pipedrive",
   "permissions": [
     "storage",
