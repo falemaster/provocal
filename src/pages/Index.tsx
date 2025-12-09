@@ -104,11 +104,13 @@ const Index = () => {
 
       // Upload audio to Supabase Storage
       const audioPath = `${newCall.id}.webm`;
-      const { error: uploadError } = await supabase.storage
+      console.log('Uploading audio to storage, path:', audioPath, 'size:', recorder.audioBlob.size);
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('call-recordings')
         .upload(audioPath, recorder.audioBlob, {
           contentType: 'audio/webm',
-          upsert: true,
+          upsert: false, // Don't use upsert to avoid RLS issues
         });
 
       if (uploadError) {
@@ -116,9 +118,23 @@ const Index = () => {
         throw new Error(`Échec de l'upload audio: ${uploadError.message}`);
       }
 
-      console.log('Audio uploaded to storage:', audioPath);
+      console.log('Audio uploaded successfully:', uploadData);
+
+      // Verify the file exists before calling transcription
+      const { data: fileExists } = await supabase.storage
+        .from('call-recordings')
+        .list('', { search: audioPath });
+      
+      console.log('File verification:', fileExists);
+      
+      if (!fileExists || fileExists.length === 0) {
+        throw new Error('Le fichier audio n\'a pas été trouvé après l\'upload');
+      }
 
       // Call transcription function with storage path
+      const transcribeBody = { audioPath, callId: newCall.id };
+      console.log('Calling transcribe-call with body:', transcribeBody);
+      
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-call`,
         {
@@ -127,10 +143,7 @@ const Index = () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({
-            audioPath,
-            callId: newCall.id,
-          }),
+          body: JSON.stringify(transcribeBody),
         }
       );
 
