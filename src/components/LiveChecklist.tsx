@@ -1,4 +1,4 @@
-import { Check, Loader2, Circle } from 'lucide-react';
+import { Check, Loader2, Circle, Clock } from 'lucide-react';
 import { ChecklistItem } from '@/hooks/useChecklistAnalysis';
 import { cn } from '@/lib/utils';
 
@@ -8,7 +8,16 @@ interface LiveChecklistProps {
   onToggle: (itemId: string) => void;
   checkedCount: number;
   totalCount: number;
+  lastAnalysisTime?: number | null;
 }
+
+const formatTimeSince = (timestamp: number | null | undefined): string => {
+  if (!timestamp) return '';
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return `il y a ${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `il y a ${minutes}min`;
+};
 
 export const LiveChecklist = ({
   items,
@@ -16,6 +25,7 @@ export const LiveChecklist = ({
   onToggle,
   checkedCount,
   totalCount,
+  lastAnalysisTime,
 }: LiveChecklistProps) => {
   return (
     <div className="rounded-xl border bg-card/50 p-4">
@@ -23,12 +33,28 @@ export const LiveChecklist = ({
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           Points à aborder
           {isAnalyzing && (
-            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+            <span className="flex items-center gap-1 text-xs text-primary">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Analyse...
+            </span>
           )}
         </h3>
-        <span className="text-xs font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
-          {checkedCount}/{totalCount}
-        </span>
+        <div className="flex items-center gap-2">
+          {lastAnalysisTime && !isAnalyzing && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {formatTimeSince(lastAnalysisTime)}
+            </span>
+          )}
+          <span className="text-xs font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
+            {checkedCount}/{totalCount}
+          </span>
+        </div>
+      </div>
+
+      {/* Analysis info */}
+      <div className="mb-3 p-2 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+        🎙️ Analyse automatique toutes les 60 secondes. Cliquez pour cocher/décocher manuellement.
       </div>
 
       <div className="space-y-2">
@@ -67,6 +93,9 @@ export const LiveChecklist = ({
                 )}
               >
                 {item.label}
+                {item.isManuallySet && (
+                  <span className="ml-2 text-xs text-muted-foreground">(manuel)</span>
+                )}
               </p>
               <p
                 className={cn(

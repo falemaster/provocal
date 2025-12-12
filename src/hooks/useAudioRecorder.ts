@@ -167,6 +167,16 @@ export const useAudioRecorder = () => {
     });
   }, []);
 
+  // Get current audio snapshot without stopping recording
+  const getAudioSnapshot = useCallback((): Blob | null => {
+    if (chunksRef.current.length === 0) {
+      return null;
+    }
+    
+    const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+    return new Blob(chunksRef.current, { type: mimeType });
+  }, []);
+
   return {
     ...state,
     startRecording,
@@ -174,5 +184,6 @@ export const useAudioRecorder = () => {
     pauseRecording,
     resumeRecording,
     resetRecording,
+    getAudioSnapshot,
   };
 };

@@ -6,9 +6,7 @@ import { AudioRecorder } from '@/components/AudioRecorder';
 import { SummaryEditor } from '@/components/SummaryEditor';
 import { CallCard } from '@/components/CallCard';
 import { LiveChecklist } from '@/components/LiveChecklist';
-import { LiveTranscription } from '@/components/LiveTranscription';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
-import { useRealtimeTranscription } from '@/hooks/useRealtimeTranscription';
 import { useChecklistAnalysis } from '@/hooks/useChecklistAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -25,17 +23,18 @@ const Index = () => {
 
   const { toast } = useToast();
   const recorder = useAudioRecorder();
-  const transcription = useRealtimeTranscription();
-  const checklist = useChecklistAnalysis();
+  
+  // Checklist with automatic audio analysis every 60 seconds
+  const checklist = useChecklistAnalysis({
+    isRecording: recorder.isRecording,
+    getAudioSnapshot: recorder.getAudioSnapshot,
+    analysisInterval: 60000, // 1 minute
+  });
 
-  // Sync transcription with recording state
+  // Load calls
   useEffect(() => {
-    if (recorder.isRecording && !transcription.isListening && transcription.isSupported) {
-      transcription.startListening();
-    } else if (!recorder.isRecording && transcription.isListening) {
-      transcription.stopListening();
-    }
-  }, [recorder.isRecording, transcription.isListening, transcription.isSupported]);
+    loadCalls();
+  }, []);
 
   // Load calls
   useEffect(() => {
@@ -68,7 +67,7 @@ const Index = () => {
       setSelectedCall(null);
       setSelectedDeal(null);
       recorder.resetRecording();
-      transcription.resetTranscript();
+      // Reset checklist only (no more live transcription)
       checklist.resetChecklist();
 
       // Scroll to recording section on mobile (after state update)
@@ -446,7 +445,7 @@ const Index = () => {
                 </div>
 
                 {/* Live Checklist - Always visible during recording */}
-                {(recorder.isRecording || transcription.transcript) && (
+                {recorder.isRecording && (
                   <div className="mb-6">
                     <LiveChecklist
                       items={checklist.items}
@@ -454,6 +453,7 @@ const Index = () => {
                       onToggle={checklist.toggleItem}
                       checkedCount={checklist.checkedCount}
                       totalCount={checklist.totalCount}
+                      lastAnalysisTime={checklist.lastAnalysisTime}
                     />
                   </div>
                 )}
@@ -472,19 +472,6 @@ const Index = () => {
                     hasAudio={!!recorder.audioBlob}
                   />
                 </div>
-
-                {/* Live Transcription */}
-                {(recorder.isRecording || transcription.transcript) && (
-                  <div className="mt-6">
-                    <LiveTranscription
-                      transcript={transcription.transcript}
-                      interimTranscript={transcription.interimTranscript}
-                      isListening={transcription.isListening}
-                      isSupported={transcription.isSupported}
-                      error={transcription.error}
-                    />
-                  </div>
-                )}
 
                 {/* Process button */}
                 {recorder.audioBlob && !recorder.isRecording && (
