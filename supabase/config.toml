@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.analyze-checklist]
 verify_jwt = false
+
+[functions.analyze-checklist-audio]
+verify_jwt = false
