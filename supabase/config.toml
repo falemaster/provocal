@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.extension-config]
 verify_jwt = false
+
+[functions.analyze-checklist]
+verify_jwt = false
