@@ -48,6 +48,9 @@ export const useRealtimeTranscription = () => {
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const transcriptRef = useRef<string>('');
+  const shouldRestartRef = useRef<boolean>(false);
+  const errorCountRef = useRef<number>(0);
+  const maxRetries = 3;
 
   const startListening = useCallback(() => {
     if (!state.isSupported) {
@@ -58,6 +61,10 @@ export const useRealtimeTranscription = () => {
       return;
     }
 
+    // Reset error count on manual start
+    errorCountRef.current = 0;
+    shouldRestartRef.current = true;
+
     try {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
@@ -67,6 +74,9 @@ export const useRealtimeTranscription = () => {
       recognition.lang = 'fr-FR';
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
+        // Reset error count on successful result
+        errorCountRef.current = 0;
+        
         let interimTranscript = '';
         let finalTranscript = '';
 
@@ -94,8 +104,31 @@ export const useRealtimeTranscription = () => {
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error:', event.error);
         
-        // Don't stop for 'no-speech' errors, just continue
+        // Ignore no-speech errors - they're normal
         if (event.error === 'no-speech') {
+          return;
+        }
+
+        // Handle network errors (common in iframes/preview environments)
+        if (event.error === 'network') {
+          errorCountRef.current++;
+          
+          if (errorCountRef.current >= maxRetries) {
+            shouldRestartRef.current = false;
+            setState(prev => ({ 
+              ...prev, 
+              error: 'Erreur réseau : la transcription live nécessite une connexion directe. Testez dans un nouvel onglet ou utilisez Chrome.',
+              isListening: false,
+            }));
+            return;
+          }
+          
+          // Don't show error for first few retries
+          return;
+        }
+
+        // Handle aborted errors silently (happens when we stop manually)
+        if (event.error === 'aborted') {
           return;
         }
         
@@ -104,17 +137,25 @@ export const useRealtimeTranscription = () => {
           error: `Erreur de reconnaissance: ${event.error}`,
           isListening: false,
         }));
+        shouldRestartRef.current = false;
       };
 
       recognition.onend = () => {
-        // Auto-restart if still supposed to be listening
-        if (recognitionRef.current) {
+        // Only auto-restart if we should and haven't exceeded error count
+        if (shouldRestartRef.current && recognitionRef.current && errorCountRef.current < maxRetries) {
           try {
-            recognition.start();
+            // Small delay before restart to prevent tight loop
+            setTimeout(() => {
+              if (shouldRestartRef.current && recognitionRef.current) {
+                recognition.start();
+              }
+            }, 500);
           } catch (e) {
-            console.log('Recognition restart failed, stopping');
+            console.log('Recognition restart failed');
             setState(prev => ({ ...prev, isListening: false }));
           }
+        } else if (!shouldRestartRef.current) {
+          setState(prev => ({ ...prev, isListening: false }));
         }
       };
 
@@ -138,10 +179,16 @@ export const useRealtimeTranscription = () => {
   }, [state.isSupported]);
 
   const stopListening = useCallback(() => {
+    shouldRestartRef.current = false;
+    
     if (recognitionRef.current) {
       const recognition = recognitionRef.current;
       recognitionRef.current = null;
-      recognition.stop();
+      try {
+        recognition.abort();
+      } catch (e) {
+        // Ignore errors when stopping
+      }
     }
     
     setState(prev => ({ 
@@ -153,6 +200,7 @@ export const useRealtimeTranscription = () => {
 
   const resetTranscript = useCallback(() => {
     transcriptRef.current = '';
+    errorCountRef.current = 0;
     setState(prev => ({
       ...prev,
       transcript: '',
@@ -164,8 +212,13 @@ export const useRealtimeTranscription = () => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      shouldRestartRef.current = false;
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {
+          // Ignore
+        }
         recognitionRef.current = null;
       }
     };
