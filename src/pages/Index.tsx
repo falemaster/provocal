@@ -26,16 +26,16 @@ const Index = () => {
   const { toast } = useToast();
   const recorder = useAudioRecorder();
   const transcription = useRealtimeTranscription();
-  const checklist = useChecklistAnalysis(transcription.transcript, recorder.isRecording);
+  const checklist = useChecklistAnalysis();
 
   // Sync transcription with recording state
   useEffect(() => {
-    if (recorder.isRecording && !transcription.isListening) {
+    if (recorder.isRecording && !transcription.isListening && transcription.isSupported) {
       transcription.startListening();
     } else if (!recorder.isRecording && transcription.isListening) {
       transcription.stopListening();
     }
-  }, [recorder.isRecording]);
+  }, [recorder.isRecording, transcription.isListening, transcription.isSupported]);
 
   // Load calls
   useEffect(() => {
