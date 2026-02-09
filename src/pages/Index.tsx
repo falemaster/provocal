@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Phone, Loader2, CheckCircle } from 'lucide-react';
+import { Plus, Phone, Loader2, CheckCircle, User, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DealSearch } from '@/components/DealSearch';
 import { AudioRecorder } from '@/components/AudioRecorder';
@@ -7,7 +7,7 @@ import { SummaryEditor } from '@/components/SummaryEditor';
 import { CallCard } from '@/components/CallCard';
 import { LiveChecklist } from '@/components/LiveChecklist';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
-import { useChecklistAnalysis } from '@/hooks/useChecklistAnalysis';
+import { useChecklistAnalysis, type CallType } from '@/hooks/useChecklistAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { PipedriveDeal, Call } from '@/types/call';
@@ -20,7 +20,7 @@ const Index = () => {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
+  const [callType, setCallType] = useState<CallType>('client');
   const { toast } = useToast();
   const recorder = useAudioRecorder();
   
@@ -28,7 +28,8 @@ const Index = () => {
   const checklist = useChecklistAnalysis({
     isRecording: recorder.isRecording,
     getAudioSnapshot: recorder.getAudioSnapshot,
-    analysisInterval: 60000, // 1 minute
+    analysisInterval: 60000,
+    callType,
   });
 
   // Load calls
@@ -442,6 +443,33 @@ const Index = () => {
                       <span>Affaire sélectionnée : {selectedDeal.title}</span>
                     </div>
                   )}
+                </div>
+
+                {/* Call type selector */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Type d'appel
+                  </label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={callType === 'client' ? 'default' : 'outline'}
+                      onClick={() => setCallType('client')}
+                      disabled={recorder.isRecording}
+                      className="flex-1"
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Client final
+                    </Button>
+                    <Button
+                      variant={callType === 'expert_comptable' ? 'default' : 'outline'}
+                      onClick={() => setCallType('expert_comptable')}
+                      disabled={recorder.isRecording}
+                      className="flex-1"
+                    >
+                      <Briefcase className="h-4 w-4 mr-2" />
+                      Expert comptable
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Live Checklist - Always visible during recording */}
